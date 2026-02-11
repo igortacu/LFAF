@@ -50,7 +50,7 @@ public class Grammar {
         P.put("A", Arrays.asList(
                 new Production('a', "A"),
                 new Production('d', "B"),
-                new Production('a', null)
+                new Production('b', null)
         ));
         P.put("B", Arrays.asList(
                 new Production('c', "B"),
