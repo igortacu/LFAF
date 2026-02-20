@@ -66,14 +66,127 @@ public class FiniteAutomaton {
 
     public void printTransitions() {
         System.out.println("Transitions:");
-        for (String from : delta.keySet()) {
+        List<String> sortedStates = new ArrayList<>(delta.keySet());
+        Collections.sort(sortedStates);
+        for (String from : sortedStates) {
             Map<Character, Set<String>> trans = delta.get(from);
-            for (Map.Entry<Character, Set<String>> e : trans.entrySet()) {
-                char sym = e.getKey();
-                for (String to : e.getValue()) {
+            List<Character> sortedSymbols = new ArrayList<>(trans.keySet());
+            Collections.sort(sortedSymbols);
+            for (Character sym : sortedSymbols) {
+                List<String> toList = new ArrayList<>(trans.get(sym));
+                Collections.sort(toList);
+                for (String to : toList) {
                     System.out.println("  " + from + " --" + sym + "--> " + to);
                 }
             }
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Task 3a: Convert FA to Regular Grammar (right-linear)
+    // Each transition  q --a--> p  becomes production  q -> a p
+    // Transitions into a final state  q --a--> f  also get  q -> a  (terminal-only)
+    // -------------------------------------------------------------------------
+    public Grammar toRegularGrammar() {
+        Set<String> Vn = new HashSet<>(Q);
+        Set<Character> Vt = new HashSet<>(Sigma);
+        Map<String, List<Grammar.Production>> P = new HashMap<>();
+
+        for (String state : Q) {
+            P.put(state, new ArrayList<>());
+        }
+
+        for (String from : delta.keySet()) {
+            for (Map.Entry<Character, Set<String>> e : delta.get(from).entrySet()) {
+                char symbol = e.getKey();
+                for (String to : e.getValue()) {
+                    // q -> a p
+                    P.get(from).add(new Grammar.Production(symbol, to));
+                    // if destination is a final state, also add q -> a  (accepts here)
+                    if (F.contains(to)) {
+                        P.get(from).add(new Grammar.Production(symbol, null));
+                    }
+                }
+            }
+        }
+
+        return new Grammar(Vn, Vt, P, q0);
+    }
+
+    // -------------------------------------------------------------------------
+    // Task 3b: Determine whether the FA is deterministic
+    // An FA is a DFA iff every (state, symbol) pair has AT MOST ONE successor.
+    // -------------------------------------------------------------------------
+    public boolean isDeterministic() {
+        for (String state : delta.keySet()) {
+            for (Map.Entry<Character, Set<String>> e : delta.get(state).entrySet()) {
+                if (e.getValue().size() > 1) return false;
+            }
+        }
+        return true;
+    }
+
+    // -------------------------------------------------------------------------
+    // Task 3c: Convert NDFA -> DFA using the subset-construction algorithm
+    // -------------------------------------------------------------------------
+    public FiniteAutomaton toDFA() {
+        // Each DFA state represents a *set* of NFA states; we encode it as a
+        // sorted, comma-joined string, e.g.  "{A,B,C}"
+        Map<Set<String>, String> stateNames = new LinkedHashMap<>();
+        Map<String, Map<Character, Set<String>>> dfaDelta = new LinkedHashMap<>();
+        Set<String> dfaFinal = new HashSet<>();
+
+        Set<String> startSet = new HashSet<>();
+        startSet.add(q0);
+        String startName = encode(startSet);
+        stateNames.put(startSet, startName);
+
+        Queue<Set<String>> worklist = new ArrayDeque<>();
+        worklist.add(startSet);
+
+        while (!worklist.isEmpty()) {
+            Set<String> current = worklist.poll();
+            String currentName = stateNames.get(current);
+            dfaDelta.put(currentName, new HashMap<>());
+
+            // Check if this DFA state contains any NFA final state
+            for (String nfaState : current) {
+                if (F.contains(nfaState)) {
+                    dfaFinal.add(currentName);
+                    break;
+                }
+            }
+
+            for (char symbol : Sigma) {
+                Set<String> reachable = new HashSet<>();
+                for (String nfaState : current) {
+                    Map<Character, Set<String>> trans = delta.get(nfaState);
+                    if (trans != null && trans.containsKey(symbol)) {
+                        reachable.addAll(trans.get(symbol));
+                    }
+                }
+                if (reachable.isEmpty()) continue;
+
+                if (!stateNames.containsKey(reachable)) {
+                    String newName = encode(reachable);
+                    stateNames.put(reachable, newName);
+                    worklist.add(reachable);
+                }
+                String targetName = stateNames.get(reachable);
+                dfaDelta.get(currentName)
+                        .computeIfAbsent(symbol, k -> new HashSet<>())
+                        .add(targetName);
+            }
+        }
+
+        Set<String> dfaStates = new HashSet<>(stateNames.values());
+        return new FiniteAutomaton(dfaStates, new HashSet<>(Sigma), dfaDelta, startName, dfaFinal);
+    }
+
+    /** Encodes a set of NFA states as a readable DFA state name, e.g. "{A,B}". */
+    private static String encode(Set<String> states) {
+        List<String> sorted = new ArrayList<>(states);
+        Collections.sort(sorted);
+        return "{" + String.join(",", sorted) + "}";
     }
 }

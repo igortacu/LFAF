@@ -1,7 +1,5 @@
 package org.example;
 
-import com.sun.source.tree.UsesTree;
-
 import java.util.*;
 
 // 25 variant
@@ -108,6 +106,51 @@ public class Grammar {
 
         }
         return copy.get(random.nextInt(options.size()));
+    }
+
+    // Classify the grammar according to Chomsky Hierarchy:
+    // Type 0 – Unrestricted
+    // Type 1 – Context-Sensitive  (|lhs| <= |rhs|, except S -> ε when S not in any rhs)
+    // Type 2 – Context-Free       (all lhs are single non-terminals)
+    // Type 3 – Regular            (all rhs are of the form tA or t, i.e. right-linear)
+    public String classifyChomskyHierarchy() {
+        boolean isType3 = true;
+        boolean isType2 = true;
+        boolean isType1 = true;
+
+        for (Map.Entry<String, List<Production>> entry : P.entrySet()) {
+            String lhs = entry.getKey();
+
+            // Type 2 / Type 3 require single non-terminal on the left
+            if (lhs.length() != 1 || !Vn.contains(lhs)) {
+                isType2 = false;
+                isType3 = false;
+            }
+
+            for (Production prod : entry.getValue()) {
+                // Build the full right-hand side string for length checks
+                String rhs = prod.nonterminal == null
+                        ? String.valueOf(prod.terminal)
+                        : String.valueOf(prod.terminal) + prod.nonterminal;
+
+                // Type 1: |lhs| <= |rhs| (epsilon allowed only for start symbol)
+                boolean isEpsilon = rhs.isEmpty();
+                if (isEpsilon && !lhs.equals(startSymbol)) {
+                    isType1 = false;
+                } else if (!isEpsilon && lhs.length() > rhs.length()) {
+                    isType1 = false;
+                }
+
+                // Type 3 (right-linear): rhs is tA or just t
+                // Our Production already enforces exactly this shape, so this holds
+                // unless lhs is not a single non-terminal (checked above)
+            }
+        }
+
+        if (isType3 && isType2) return "Type 3 - Regular Grammar";
+        if (isType2)            return "Type 2 - Context-Free Grammar";
+        if (isType1)            return "Type 1 - Context-Sensitive Grammar";
+        return                         "Type 0 - Unrestricted Grammar";
     }
 
     // convert regular expression to finite automaton
