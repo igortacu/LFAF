@@ -5,24 +5,8 @@ import org.example.Grammar;
 
 import java.util.*;
 
-/**
- * Lab 2 – Determinism in Finite Automata. Conversion from NDFA to DFA. Chomsky Hierarchy.
- *
- * Variant 25 FA (from variant.txt):
- *   Q  = {q0, q1, q2, q3}
- *   Σ  = {a, b}
- *   F  = {q2}
- *   q0 = q0
- *   δ(q0,a) = q0
- *   δ(q0,a) = q1   <- non-deterministic
- *   δ(q1,a) = q2
- *   δ(q1,b) = q1
- *   δ(q2,a) = q3
- *   δ(q3,a) = q1
- */
 public class Main {
 
-    /** Build the exact Variant 25 NDFA from variant.txt */
     private static FiniteAutomaton buildVariant25NDFA() {
         Set<String> Q     = new HashSet<>(Arrays.asList("q0", "q1", "q2", "q3"));
         Set<Character> Sigma = new HashSet<>(Arrays.asList('a', 'b'));
@@ -50,44 +34,23 @@ public class Main {
     }
 
     public static void main(String[] args) {
-
-        // =====================================================================
-        // 1. Chomsky Hierarchy classification of the Variant 25 grammar (Lab 1)
-        // =====================================================================
-        System.out.println("========================================");
         System.out.println(" CHOMSKY HIERARCHY CLASSIFICATION");
-        System.out.println("========================================");
 
         Grammar g = Grammar.variant25();
         String chomsky = g.classifyChomskyHierarchy();
         System.out.println("Variant 25 grammar is: " + chomsky);
 
-        // =====================================================================
-        // 2. The Variant 25 NDFA (from variant.txt)
-        // =====================================================================
-        System.out.println("\n========================================");
         System.out.println(" VARIANT 25 NDFA");
-        System.out.println("========================================");
 
         FiniteAutomaton ndfa = buildVariant25NDFA();
         ndfa.printTransitions();
 
-        // =====================================================================
-        // 3b. Determinism check
-        // =====================================================================
-        System.out.println("\n========================================");
         System.out.println(" 3b. DETERMINISM CHECK");
-        System.out.println("========================================");
 
         System.out.println("Is deterministic: " + ndfa.isDeterministic());
-        System.out.println("Reason: δ(q0,a) = {q0, q1} — one input leads to two states.");
+        System.out.println("Reason: δ(q0,a) = {q0, q1} - one input leads to two states.");
 
-        // =====================================================================
-        // 3a. Convert NDFA -> Regular Grammar
-        // =====================================================================
-        System.out.println("\n========================================");
         System.out.println(" 3a. NDFA -> REGULAR GRAMMAR");
-        System.out.println("========================================");
 
         Grammar regGrammar = ndfa.toRegularGrammar();
         System.out.println("Start symbol: " + regGrammar.getStartSymbol());
@@ -105,12 +68,7 @@ public class Main {
         Collections.sort(productions);
         productions.forEach(System.out::println);
 
-        // =====================================================================
-        // 3c. NDFA -> DFA (subset construction)
-        // =====================================================================
-        System.out.println("\n========================================");
         System.out.println(" 3c. NDFA -> DFA  (subset construction)");
-        System.out.println("========================================");
 
         FiniteAutomaton dfa = ndfa.toDFA();
         System.out.println("Resulting DFA transitions:");
@@ -127,6 +85,27 @@ public class Main {
             System.out.printf("  %-10s %-8s %-8s %s%n",
                     t, ndfa_res, dfa_res,
                     ndfa_res == dfa_res ? "OK" : "MISMATCH");
+        }
+
+        System.out.println(" GRAPH GENERATION");
+
+        try {
+            String ndfaFile = "graphs/ndfa_variant25.dot";
+            String dfaFile = "graphs/dfa_variant25.dot";
+
+            // Create graphs directory if it doesn't exist
+            new java.io.File("graphs").mkdirs();
+
+            ndfa.saveGraphvizDot(ndfaFile);
+            dfa.saveGraphvizDot(dfaFile);
+
+            System.out.println("NDFA graph saved to: " + ndfaFile);
+            System.out.println("DFA graph saved to: " + dfaFile);
+            System.out.println("\nTo generate PNG images, run:");
+            System.out.println("  dot -Tpng " + ndfaFile + " -o graphs/ndfa_variant25.png");
+            System.out.println("  dot -Tpng " + dfaFile + " -o graphs/dfa_variant25.png");
+        } catch (java.io.IOException e) {
+            System.err.println("Error saving graphs: " + e.getMessage());
         }
     }
 }

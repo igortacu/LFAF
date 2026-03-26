@@ -189,4 +189,79 @@ public class FiniteAutomaton {
         Collections.sort(sorted);
         return "{" + String.join(",", sorted) + "}";
     }
+
+    // -------------------------------------------------------------------------
+    // Graph visualization: Generate Graphviz DOT format
+    // -------------------------------------------------------------------------
+    public String toGraphvizDot() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("digraph FiniteAutomaton {\n");
+        sb.append("    rankdir=LR;\n");
+        sb.append("    node [shape=circle];\n");
+
+        // Mark final states with double circle
+        if (!F.isEmpty()) {
+            sb.append("    node [shape=doublecircle]; ");
+            List<String> finalStates = new ArrayList<>(F);
+            Collections.sort(finalStates);
+            for (int i = 0; i < finalStates.size(); i++) {
+                sb.append('"').append(finalStates.get(i)).append('"');
+                if (i < finalStates.size() - 1) sb.append(" ");
+            }
+            sb.append(";\n");
+        }
+
+        // Reset to single circle for non-final states
+        sb.append("    node [shape=circle];\n");
+
+        // Add invisible start node with arrow to initial state
+        sb.append("    start [shape=point];\n");
+        sb.append("    start -> \"").append(q0).append("\";\n");
+
+        // Add transitions
+        List<String> sortedStates = new ArrayList<>(delta.keySet());
+        Collections.sort(sortedStates);
+
+        for (String from : sortedStates) {
+            Map<Character, Set<String>> trans = delta.get(from);
+            if (trans == null) continue;
+
+            // Group transitions by destination
+            Map<String, List<Character>> grouped = new HashMap<>();
+            for (Map.Entry<Character, Set<String>> e : trans.entrySet()) {
+                char symbol = e.getKey();
+                for (String to : e.getValue()) {
+                    grouped.computeIfAbsent(to, k -> new ArrayList<>()).add(symbol);
+                }
+            }
+
+            // Output transitions with combined labels
+            List<String> destinations = new ArrayList<>(grouped.keySet());
+            Collections.sort(destinations);
+            for (String to : destinations) {
+                List<Character> symbols = grouped.get(to);
+                Collections.sort(symbols);
+                StringBuilder label = new StringBuilder();
+                for (int i = 0; i < symbols.size(); i++) {
+                    label.append(symbols.get(i));
+                    if (i < symbols.size() - 1) label.append(",");
+                }
+                sb.append("    \"").append(from).append("\" -> \"")
+                  .append(to).append("\" [label=\"").append(label).append("\"];\n");
+            }
+        }
+
+        sb.append("}\n");
+        return sb.toString();
+    }
+
+    /**
+     * Saves the Graphviz DOT representation to a file.
+     * @param filename The output file path
+     */
+    public void saveGraphvizDot(String filename) throws java.io.IOException {
+        try (java.io.FileWriter writer = new java.io.FileWriter(filename)) {
+            writer.write(toGraphvizDot());
+        }
+    }
 }
